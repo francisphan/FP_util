@@ -1,70 +1,59 @@
 #!/usr/bin/env ruby
-
-def escape_quotes(str)
-	str.gsub(/"/,'\\"')
-end
-
-class Object
-	def blank?
-		respond_to?(:empty?) ? empty? : !self
-	end
-end
+require 'optparse'
 
 class ScriptArguments < Hash
-	def initialize(args)
-		super()
-		opts = OptionParser.new do |opts|
+    def initialize(args)
+        super()
 
-			opts.on('-t [TOOL_NAME]', '--tool [TOOL_NAME]', 'Pass the name of a tool you would like to set up') do |tool|
-					self[:tool] = tool
-			end
-			
-			opt.on_tail('-h', '--help', 'Display this hel and exit') do
-				puts opts
-				exit
-			end
-		end
-		
-		opts.parse!(args)
-	end
+        opt_parser = OptionParser.new do |opts|
+            opts.banner = 'Usage: groot [options]'
+
+            opts.on('-t ', '--tool TOOL', 'Pass the name of a tool you would like to set up') do |tool|
+                self[:tool] = tool
+            end
+
+            opts.on_tail('-h', '--help', 'Display this help and exit') do
+                puts opts
+                exit
+            end
+        end
+
+        opt_parser.parse!(args)
+    end
 end
-
 arguments = ScriptArguments.new(ARGV)
 
 class ToolInstaller
-	def initialize(args)
-		
-		@tool = args[:tool]
-		@repo_path = File.dirname(File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__)
-		@tool_path = "#{@repo_path}/tools/#{@tool}"
+    def initialize(args)
+        @tool = args[:tool]
+        @repo_path = Dir.pwd + File.dirname(File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__)
+        @repo_path.slice!('.')
+        @tool_path = "#{@repo_path}/tools/#{@tool}"
+    end
 
-	end
+    def install_script_tool?
+        if File.exist?("#{@repo_path}/config/#{@tool}_install")
+            @install_script = "#{@repo_path}/config/#{@tool}_install"
+        end
+    end
 
-	def install_script_tool?
-		if File.exist?("#{@repo_path}/tools/#{@tool}_install")
-			@install_script = "#{@repo_path}/tools/#{@tool}_install"
+    def setup
+        system 'mkdir -p /usr/local/bin' unless Dir.exist?('/usr/local/bin')
 
-		end
-	end
-	
-	def setup
-		if Dir.exists?("/usr/local/bin")
-			system "mkdir -p /usr/local/bin"
-		end
+        system "ln -s #{@repo_path}/groot /usr/local/bin/groot" unless File.exist?('/usr/local/bin/groot')
 
-		system "ln -s #{@repo_path}/groot /usr/local/bin/groot"
+        success = if install_script_tool?
+                      system @install_script.to_s
+                  else
+                      true
+                  end
 
-		success = false
-		if install_script_tool?		
-			success = system "#{@install_script}"
-		else
-			success = true
-		end
-
-		if success
-			system "ln -s #{@tool_path} /usr/local/bin/#{@tool}"
-		end
-	end
+        if success
+            system "ln -s #{@tool_path} /usr/local/bin/#{@tool}" unless File.exist?("/usr/local/bin/#{@tool}")
+        else
+            puts 'Failed to create symbolic link'
+        end
+    end
 end
 
 groot = ToolInstaller.new(arguments)

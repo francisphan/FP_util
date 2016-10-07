@@ -1,0 +1,76 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+
+class ScriptArguments < Hash
+    def initialize(args)
+        super()
+
+        opt_parser = OptionParser.new do |opts|
+            opts.banner = 'Usage: cpf [source] [destination] [options]'
+
+            opts.on('-m', '-mv', 'Acts as mv instead of cp') do |_m|
+                self[:mv] = true
+            end
+
+            opts.on('-n', '--no-overwrite', 'Do not overwrite existing file, by default it will overwrite') do |_n|
+                self[:overwrite] = true
+            end
+
+            opts.on('-h', '--help', 'Display this help and exit') do
+                puts opts
+                exit
+            end
+        end
+
+        opt_parser.parse!(args)
+
+        if args.size > 2
+            STDERR.puts 'You put too many arguments'
+        elsif args.empty? || args.size == 1
+            STDERR.puts 'You did not indicate a source and/or destination'
+        elsif !File.exist?(args[0])
+            STDERR.puts "#{args[0]}: File or directory not found"
+        elsif !File.exist?(args[1])
+            STDERR.puts "#{args[1]}: File or Directory not found"
+        else
+            self[:source] = args[0]
+            self[:destination] = args[1]
+        end
+      end
+end
+
+arguments = ScriptArguments.new(ARGV)
+
+class CPF
+    def initialize(args)
+        puts args
+        if File.directory?(args[:source])
+            @source = ""
+            @source += File.dirname(args[:source]) unless File.dirname(args[:source]) == '.'
+            @source += File.basename(args[:source])
+        else
+            @source = args[:source]
+        end
+        if File.directory?(args[:destination])
+            @destination = args[:destination]
+        elsif File.dirname(args[:destination]) == "."
+            @destination = Dir.pwd
+        else
+            @destination = File.dirname(args[:desination])
+        end
+        puts @source
+        puts @destination
+        @mv = args[:mv]
+        @overwrite = args[:overwrite]
+    end
+
+    def execute
+        if File.directory?(@source)
+            system "tar -czf - #{@source} | (pv -N ' Compressing' -p --timer --rate --bytes > backup.tgz)"
+        end
+      end
+end
+
+cpf = CPF.new(arguments)
+cpf.execute
