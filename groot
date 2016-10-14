@@ -28,7 +28,7 @@ class ToolInstaller
         @tool = args[:tool]
         @repo_path = Dir.pwd + File.dirname(File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__)
         @repo_path.slice!('.')
-        @tool_path = "#{@repo_path}/tools/#{@tool}"
+        @tool_path = "#{@repo_path}/tools/#{@tool}/#{@tool}"
     end
 
     def install_script_tool?

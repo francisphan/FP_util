@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+require 'flickraw'
+require "open-uri"
+
+tool_path = File.expand_path(File.dirname(File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__))
+
+FlickRaw.api_key = File.open(tool_path + "/secrets/key").first.split("\n").first
+FlickRaw.shared_secret = File.open(tool_path + "/secrets/shared_secret").first.split("\n").first
+
+flickr.access_token = File.open(tool_path + "/secrets/access_token").first.split("\n").first
+flickr.access_secret = File.open(tool_path + "/secrets/access_secret").first.split("\n").first
+begin
+  login = flickr.test.login
+  puts "You are now authenticated as #{login.username} with token #{flickr.access_token} and secret #{flickr.access_secret}"
+
+rescue FlickRaw::FailedResponse => e
+  puts "Authentication failed : #{e.msg}"
+end
+
+photos = flickr.people.getPhotos(user_id: login.id)
+system "mkdir -p #{Dir.pwd}/img/"
+photos.each do |photo|
+  url = FlickRaw.url_o(flickr.photos.getInfo(photo_id: photo.id))
+  puts url
+  File.open(Dir.pwd + "/img/#{photo.id}_fp.jpg", 'wb') do |fo|
+    fo.write open(url).read
+  end
+end
+puts "#{photos.size} Photos Downloaded"
+# puts flickr.photosets.getPhotos FlickRaw.api_key,
